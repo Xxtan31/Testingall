@@ -2,7 +2,10 @@
 FROM python:3.9-slim
 
 # Set working directory
-WORKDIR /
+WORKDIR /app
+
+# Update pip
+RUN pip install --upgrade pip
 
 # Install Flask
 COPY requirements.txt ./
