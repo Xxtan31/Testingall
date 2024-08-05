@@ -1,20 +1,19 @@
-# Python 3.11 tabanlı bir imaj kullanın (veya ihtiyacınıza uygun başka bir versiyon)
-FROM python:3.11-slim
+# Base image
+FROM python:3.9-slim
 
-# Çalışma dizinini oluşturun ve ayarlayın
-WORKDIR /
+# Set working directory
+WORKDIR /app
 
-# Gereksinim dosyalarını kopyalayın
-COPY requirements.txt .
+# Install Flask
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
 
-# Gereksinimleri yükleyin
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy application code
+COPY app.py app.py
+COPY index.html index.html
 
-# Uygulama dosyalarını kopyalayın
-COPY app.py .
-
-# Flask uygulamanızı başlatmak için komutu tanımlayın
-CMD ["python", "app.py"]
-
-# Uygulamanın dinleyeceği portu açın
+# Expose port
 EXPOSE 5000
+
+# Run the application
+CMD ["python", "app.py"]
