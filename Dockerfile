@@ -4,11 +4,18 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /app
 
-# Update pip
-RUN pip install --upgrade pip
+# Install virtualenv
+RUN pip install virtualenv
 
-# Install Flask
+# Create a virtual environment
+RUN virtualenv venv
+
+# Activate the virtual environment
+ENV PATH="/app/venv/bin:$PATH"
+
+# Copy requirements file and install dependencies inside the virtual environment
 COPY requirements.txt ./
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Copy all files to the working directory
