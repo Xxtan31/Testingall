@@ -2,7 +2,7 @@
 FROM python:3.11-slim
 
 # Çalışma dizinini oluşturun ve ayarlayın
-WORKDIR /app
+WORKDIR /
 
 # Gereksinim dosyalarını kopyalayın
 COPY requirements.txt .
