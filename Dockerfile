@@ -12,8 +12,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Uygulama dosyalarını kopyalayın
 COPY app.py .
-COPY templates /app/templates  # Eğer bir templates dizininiz varsa
-COPY static /app/static        # Eğer bir static dizininiz varsa
 
 # Flask uygulamanızı başlatmak için komutu tanımlayın
 CMD ["python", "app.py"]
