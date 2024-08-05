@@ -1,30 +1,27 @@
-from flask import Flask, request, jsonify, render_template
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, jsonify
+from parse import ParseObject, ParseQuery
 from datetime import datetime, timedelta
 import threading
 import time
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///keys.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
-class Key(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String(50), nullable=False)
-    hwid = db.Column(db.String(50), nullable=True)
-    usage_limit = db.Column(db.Integer, default=1)
-    expiration_date = db.Column(db.DateTime)
-    uses = db.Column(db.Integer, default=0)
+# Back4App yapılandırması
+APPLICATION_ID = 'your_application_id'
+REST_API_KEY = 'your_rest_api_key'
+PARSE_SERVER_URL = 'https://parseapi.back4app.com/'
 
-# Veritabanı tablolarını oluşturur
-@app.before_first_request
-def create_tables():
-    db.create_all()
+ParseObject.set_application_id(APPLICATION_ID)
+ParseObject.set_rest_api_key(REST_API_KEY)
+ParseObject.set_server_url(PARSE_SERVER_URL)
+
+class Key(ParseObject):
+    def __init__(self, *args, **kwargs):
+        super(Key, self).__init__('Key', *args, **kwargs)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return "Welcome to the Key Management API"
 
 @app.route('/create_key', methods=['POST'])
 def create_key():
@@ -34,10 +31,12 @@ def create_key():
     expiration_minutes = data.get('expiration_minutes', 60)
     expiration_date = datetime.now() + timedelta(minutes=expiration_minutes)
     
-    new_key = Key(key=key, usage_limit=usage_limit, expiration_date=expiration_date)
-    db.session.add(new_key)
-    db.session.commit()
-    
+    new_key = Key()
+    new_key.set('key', key)
+    new_key.set('usage_limit', usage_limit)
+    new_key.set('expiration_date', expiration_date)
+    new_key.save()
+
     return jsonify({"message": "Key created successfully"}), 201
 
 @app.route('/use_key', methods=['POST'])
@@ -45,78 +44,85 @@ def use_key():
     data = request.json
     key = data.get('key')
     hwid = data.get('hwid')
-    key_entry = Key.query.filter_by(key=key).first()
-    
+
+    query = ParseQuery(Key)
+    query.equal_to('key', key)
+    key_entry = query.first()
+
     if not key_entry:
         return jsonify({"message": "Key not found"}), 404
-    
-    if key_entry.hwid and key_entry.hwid != hwid:
+
+    if key_entry.get('hwid') and key_entry.get('hwid') != hwid:
         return jsonify({"message": "HWID does not match"}), 403
-    
-    if datetime.now() > key_entry.expiration_date:
-        db.session.delete(key_entry)
-        db.session.commit()
+
+    if datetime.now() > key_entry.get('expiration_date'):
+        key_entry.delete()
         return jsonify({"message": "Key expired and deleted"}), 403
-    
-    if key_entry.uses >= key_entry.usage_limit:
+
+    if key_entry.get('uses') >= key_entry.get('usage_limit'):
         return jsonify({"message": "Key usage limit reached"}), 403
+
+    key_entry.set('uses', key_entry.get('uses') + 1)
+    key_entry.set('hwid', hwid)
+    key_entry.save()
     
-    key_entry.uses += 1
-    key_entry.hwid = hwid
-    db.session.commit()
     return jsonify({"message": "Key used successfully"}), 200
 
 @app.route('/check_hwid', methods=['POST'])
 def check_hwid():
     data = request.json
     hwid = data.get('hwid')
-    key_entry = Key.query.filter_by(hwid=hwid).first()
+
+    query = ParseQuery(Key)
+    query.equal_to('hwid', hwid)
+    key_entry = query.first()
 
     if not key_entry:
         return jsonify({"message": "HWID not found"}), 404
 
-    if datetime.now() > key_entry.expiration_date:
-        db.session.delete(key_entry)
-        db.session.commit()
+    if datetime.now() > key_entry.get('expiration_date'):
+        key_entry.delete()
         return jsonify({"message": "Key expired and deleted"}), 403
 
-    return jsonify({"message": "HWID valid", "key": key_entry.key}), 200
+    return jsonify({"message": "HWID valid", "key": key_entry.get('key')}), 200
 
 @app.route('/delete_all_keys', methods=['DELETE'])
 def delete_all_keys():
     try:
-        num_deleted = db.session.query(Key).delete()
-        db.session.commit()
-        return jsonify({"message": f"{num_deleted} keys deleted successfully"}), 200
+        query = ParseQuery(Key)
+        keys = query.find()
+        for key in keys:
+            key.delete()
+        return jsonify({"message": f"{len(keys)} keys deleted successfully"}), 200
     except Exception as e:
-        db.session.rollback()
         return jsonify({"message": "Failed to delete keys", "error": str(e)}), 500
-        
+
 @app.route('/keys', methods=['GET'])
 def get_keys():
-    keys = Key.query.all()
+    query = ParseQuery(Key)
+    keys = query.find()
     keys_list = [
         {
             "id": key.id,
-            "key": key.key,
-            "hwid": key.hwid,
-            "usage_limit": key.usage_limit,
-            "expiration_date": key.expiration_date,
-            "uses": key.uses,
+            "key": key.get('key'),
+            "hwid": key.get('hwid'),
+            "usage_limit": key.get('usage_limit'),
+            "expiration_date": key.get('expiration_date'),
+            "uses": key.get('uses'),
         }
         for key in keys
     ]
     return jsonify(keys_list), 200
 
 def delete_expired_keys():
-    with app.app_context():
-        while True:
-            now = datetime.now()
-            expired_keys = Key.query.filter(Key.expiration_date < now).all()
-            for key in expired_keys:
-                db.session.delete(key)
-            db.session.commit()
-            time.sleep(60)  # Her 60 saniyede bir kontrol et
+    while True:
+        now = datetime.now()
+        query = ParseQuery(Key)
+        query.less_than('expiration_date', now)
+        expired_keys = query.find()
+        for key in expired_keys:
+            key.delete()
+        time.sleep(60)  # Her 1 dakikada bir kontrol et
 
 if __name__ == '__main__':
     threading.Thread(target=delete_expired_keys, daemon=True).start()
