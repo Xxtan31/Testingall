@@ -5,12 +5,11 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Install Flask
-COPY requirements.txt requirements.txt
+COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-# Copy application code
-COPY app.py app.py
-COPY index.html index.html
+# Copy all files to the working directory
+COPY . .
 
 # Expose port
 EXPOSE 5000
