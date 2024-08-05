@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # Back4App yapılandırması
 APPLICATION_ID = '31177719-e93c-4bd0-ad3a-063d94070f07'
-REST_API_KEY = 'your_rest_api_key'
+REST_API_KEY = 'S5dX9K2LYJ8wrJwwBeVKyssVDe33FmxV4yDFzz6y'
 PARSE_SERVER_URL = 'https://parseapi.back4app.com/'
 
 ParseObject.set_application_id(APPLICATION_ID)
