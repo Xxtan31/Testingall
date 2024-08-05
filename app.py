@@ -1,7 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
-from flask import render_template
 import threading
 import time
 
@@ -18,14 +17,15 @@ class Key(db.Model):
     expiration_date = db.Column(db.DateTime)
     uses = db.Column(db.Integer, default=0)
 
-with app.app_context():
+# Veritabanı tablolarını oluşturur
+@app.before_first_request
+def create_tables():
     db.create_all()
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Key oluşturma endpointi
 @app.route('/create_key', methods=['POST'])
 def create_key():
     data = request.json
@@ -40,11 +40,6 @@ def create_key():
     
     return jsonify({"message": "Key created successfully"}), 201
 
-
-
-
-
-# Key kullanma endpointi (HWID ile ilişkilendirir)
 @app.route('/use_key', methods=['POST'])
 def use_key():
     data = request.json
@@ -58,7 +53,6 @@ def use_key():
     if key_entry.hwid and key_entry.hwid != hwid:
         return jsonify({"message": "HWID does not match"}), 403
     
-    # Süre kontrolü
     if datetime.now() > key_entry.expiration_date:
         db.session.delete(key_entry)
         db.session.commit()
@@ -122,7 +116,7 @@ def delete_expired_keys():
             for key in expired_keys:
                 db.session.delete(key)
             db.session.commit()
-            time.sleep(1)  # Her 1 saniyede bir kontrol et
+            time.sleep(60)  # Her 60 saniyede bir kontrol et
 
 if __name__ == '__main__':
     threading.Thread(target=delete_expired_keys, daemon=True).start()
