@@ -7,7 +7,7 @@ import time
 app = Flask(__name__)
 
 # Back4App yapılandırması
-APPLICATION_ID = 'your_application_id'
+APPLICATION_ID = '31177719-e93c-4bd0-ad3a-063d94070f07'
 REST_API_KEY = 'your_rest_api_key'
 PARSE_SERVER_URL = 'https://parseapi.back4app.com/'
 
