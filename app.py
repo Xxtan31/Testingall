@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from parse import ParseObject, ParseQuery
+from parse_rest.api import ParseObject, ParseQuery  # veya uygun parse kütüphanesi
 from datetime import datetime, timedelta
 import threading
 import time
@@ -35,6 +35,7 @@ def create_key():
     new_key.set('key', key)
     new_key.set('usage_limit', usage_limit)
     new_key.set('expiration_date', expiration_date)
+    new_key.set('uses', 0)  # Başlangıçta kullanım sayısını sıfır yapıyoruz
     new_key.save()
 
     return jsonify({"message": "Key created successfully"}), 201
